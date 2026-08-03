@@ -44,7 +44,9 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0}
+html{overflow-x:clip}
 body{
+  overflow-x:clip;
   background:var(--paper);
   color:var(--ink);
   font-family:var(--sans);
@@ -176,16 +178,20 @@ button:focus-visible{outline:none}
 .person:last-child{border-bottom:none}
 .person-main{display:flex;align-items:center;gap:10px}
 .dot{width:9px;height:9px;border-radius:50%;flex:none}
-.person-stack{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
-.person-name{font-weight:500;line-height:1.25}
-.person-meta{display:flex;font-size:12px;line-height:1.3;margin-top:3px}
+.person-name{flex:1;min-width:0;font-weight:500;line-height:1.25;overflow-wrap:anywhere}
+.person-meta{display:flex;margin:6px 0 1px 19px;min-width:0}
 .person-toggle{
-  display:inline-flex;align-items:center;gap:7px;
+  display:inline-flex;align-items:center;justify-content:space-between;gap:8px;
+  width:100%;min-width:0;
   border:1px solid var(--rule-strong);background:var(--card);
   padding:3px 4px 3px 10px;margin:0;cursor:pointer;
   font-size:12px;color:var(--muted);text-align:left;border-radius:999px;
   transition:border-color .14s ease,background .14s ease,color .14s ease;
 }
+.person-toggle .figures{
+  display:flex;align-items:baseline;gap:6px;min-width:0;flex-wrap:wrap;
+}
+.person-toggle .figures b{white-space:nowrap}
 .person-toggle:hover{border-color:var(--credit);background:var(--credit-soft);color:var(--ink)}
 .person-toggle b{font-weight:600;color:var(--ink)}
 .person-toggle .sep{opacity:.45}
@@ -202,6 +208,7 @@ button:focus-visible{outline:none}
 .person-net{font-size:13px;font-weight:600;white-space:nowrap}
 
 .pbreak{
+  max-width:calc(100% - 19px);
   margin:8px 0 4px 19px;border:1px solid var(--rule);border-radius:7px;
   overflow:hidden;background:var(--paper);
 }
@@ -214,7 +221,7 @@ button:focus-visible{outline:none}
   font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
   background:var(--card);border-bottom:1px solid var(--rule);
 }
-.pb-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pb-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .pb-paid{color:var(--credit)}
 .pbrow-skip{opacity:.5;text-decoration:line-through}
 .pbrow-empty{color:var(--muted);font-style:italic}
@@ -230,8 +237,9 @@ button:focus-visible{outline:none}
   border-bottom:1px solid transparent;
 }
 .exp[data-open="1"] .exp-head{border-bottom-color:var(--rule)}
-.exp-title{font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.exp-sum{font-family:var(--mono);font-size:13px;color:var(--muted);white-space:nowrap}
+.exp-head{flex-wrap:wrap;row-gap:4px}
+.exp-title{font-weight:600;flex:1 1 140px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.exp-sum{font-family:var(--mono);font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .chev{width:14px;height:14px;flex:none;color:var(--muted);transition:transform .18s ease}
 .exp[data-open="1"] .chev{transform:rotate(180deg)}
 .exp-body{padding:15px 14px 16px}
@@ -304,7 +312,10 @@ button:focus-visible{outline:none}
 .rail-val.neg{color:var(--debt)}
 .rail-val.zero{color:var(--muted);font-weight:400}
 @media (max-width:420px){
-  .rail-scale,.rail-row{grid-template-columns:58px 1fr 78px;gap:7px}
+  .rail-scale,.rail-row{grid-template-columns:56px 1fr 74px;gap:6px}
+  .panel-body{padding:13px 12px}
+  .exp-body{padding:13px 11px 14px}
+  .pbrow{grid-template-columns:1fr 72px 72px;gap:6px;padding:5px 8px}
 }
 
 /* ---------- settlements ---------- */
@@ -321,7 +332,8 @@ button:focus-visible{outline:none}
 .settle{list-style:none;margin:0;padding:0}
 .settle li{padding:9px 0;border-bottom:1px dotted var(--rule-strong)}
 .settle li:last-child{border-bottom:none}
-.settle-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.settle-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap;min-width:0}
+.settle .from,.settle .to{overflow-wrap:anywhere}
 .settle .from{font-weight:600}
 .settle .arrow{color:var(--muted);font-family:var(--mono)}
 .settle .to{font-weight:600;color:var(--credit)}
@@ -828,26 +840,26 @@ function renderPeople(){
     const dot = el("span", "dot");
     dot.style.background = colorOf(p.id);
 
-    const stack = el("span", "person-stack");
-    stack.append(el("span", "person-name", p.name));
+    const name = el("span", "person-name", p.name);
 
-    const meta = el("span", "person-meta");
+    const meta = el("div", "person-meta");
     const expanded = openBreak.has(p.id);
 
     const toggle = el("button", "person-toggle");
     toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
     toggle.title = expanded ? "Hide the breakdown" : "See which expenses make up these figures";
     toggle.innerHTML =
-      "paid <b class='num'>" + fmt(L.paid[p.id]) + "</b>" +
-      "<span class='sep'>·</span>" +
-      "share <b class='num'>" + fmt(L.owed[p.id]) + "</b>" +
+      "<span class='figures'>" +
+        "<span>paid <b class='num'>" + fmt(L.paid[p.id]) + "</b></span>" +
+        "<span class='sep'>·</span>" +
+        "<span>share <b class='num'>" + fmt(L.owed[p.id]) + "</b></span>" +
+      "</span>" +
       "<span class='caret'>\u25BE</span>";
     toggle.onclick = () => {
       if (expanded) openBreak.delete(p.id); else openBreak.add(p.id);
       renderPeople();
     };
     meta.append(toggle);
-    stack.append(meta);
 
     const n = L.net[p.id];
     const bal = el("span", "person-net num");
@@ -858,8 +870,8 @@ function renderPeople(){
     const rm = el("button", "btn btn-sm btn-ghost", "Remove");
     rm.onclick = () => removePerson(p.id);
 
-    row.append(dot, stack, bal, rm);
-    li.append(row);
+    row.append(dot, name, bal, rm);
+    li.append(row, meta);
     if (expanded) li.append(breakdownFor(p, L));
     list.append(li);
   });
