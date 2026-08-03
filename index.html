@@ -1,0 +1,1927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tally</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EDF1EF;
+  --card:#FFFFFF;
+  --ink:#14201B;
+  --muted:#65756E;
+  --rule:#DBE2DE;
+  --rule-strong:#C3CEC8;
+  --credit:#0B6B4F;
+  --credit-soft:#E0EFE8;
+  --debt:#A8402B;
+  --debt-soft:#F6E5E0;
+  --focus:#0B6B4F;
+  --sans:"Space Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --r:10px;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,select{font:inherit;color:inherit}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-0.01em}
+
+/* ---------- shell ---------- */
+.masthead{
+  border-bottom:1px solid var(--rule-strong);
+  background:var(--card);
+}
+.masthead-in{
+  max-width:1220px;margin:0 auto;padding:18px 22px 14px;
+  display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;
+}
+.masthead-in select{width:auto;margin-left:auto;flex:none}
+.wordmark{font-size:21px;font-weight:700;letter-spacing:-0.03em;margin:0}
+.wordmark span{color:var(--credit)}
+.tagline{color:var(--muted);font-size:13px;margin:0;flex:1 1 240px}
+
+.toolbar{
+  max-width:1220px;margin:0 auto;padding:0 22px 14px;
+  display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;
+}
+.tgroup{display:flex;flex-direction:column;gap:5px;padding-right:14px;border-right:1px solid var(--rule)}
+.tgroup:last-child,.tgroup-end{border-right:none;padding-right:0}
+.tgroup-end{margin-left:auto}
+.tgroup-label{
+  font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);white-space:nowrap;
+}
+.tgroup-btns{display:flex;gap:6px;flex-wrap:wrap}
+@media (max-width:720px){
+  .tgroup{border-right:none;padding-right:0;width:100%}
+  .tgroup-end{margin-left:0}
+  .tgroup-end .tgroup-label{display:none}
+}
+
+main{
+  max-width:1220px;margin:0 auto;padding:22px;
+  display:grid;gap:22px;
+  grid-template-columns:1.55fr 1fr;
+  grid-template-areas:
+    "expenses people"
+    "expenses side";
+  align-items:start;
+}
+.people-col{grid-area:people}
+.exp-col{grid-area:expenses}
+.side{grid-area:side;position:sticky;top:22px}
+@media (max-width:960px){
+  main{
+    grid-template-columns:1fr;padding:16px;
+    grid-template-areas:"people" "expenses" "side";
+  }
+  .side{position:static}
+}
+
+.panel{background:var(--card);border:1px solid var(--rule);border-radius:var(--r);overflow:hidden}
+.panel + .panel{margin-top:22px}
+.panel-head{
+  display:flex;align-items:center;gap:10px;
+  padding:13px 16px;border-bottom:1px solid var(--rule);
+}
+.panel-head h2{
+  margin:0;font-size:11px;font-weight:600;letter-spacing:0.13em;text-transform:uppercase;color:var(--muted);
+}
+.icon-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:26px;height:26px;margin-left:8px;flex:none;
+  border:1px solid var(--rule-strong);border-radius:6px;background:var(--card);
+  color:var(--muted);cursor:pointer;padding:0;
+  transition:border-color .14s ease,background .14s ease,color .14s ease;
+}
+.icon-btn:hover{border-color:var(--credit);background:var(--credit-soft);color:var(--credit)}
+.icon-btn:disabled{opacity:.35;cursor:not-allowed}
+.icon-btn:disabled:hover{border-color:var(--rule-strong);background:var(--card);color:var(--muted)}
+.icon-btn:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.panel-head .count{
+  margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--muted);
+}
+.panel-body{padding:16px}
+
+/* ---------- controls ---------- */
+label.field{display:block;margin-bottom:14px}
+label.field > span{
+  display:block;font-size:12px;font-weight:500;color:var(--muted);margin-bottom:5px;
+}
+input[type=text],input[type=number],select{
+  width:100%;padding:9px 11px;background:#fff;
+  border:1px solid var(--rule-strong);border-radius:7px;outline:none;
+}
+input[type=number]{font-family:var(--mono);font-variant-numeric:tabular-nums}
+select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' fill='none' stroke='%2365756E' stroke-width='1.6' stroke-linecap='round'/></svg>");background-repeat:no-repeat;background-position:right 11px center;padding-right:30px}
+input:focus,select:focus,button:focus-visible{border-color:var(--focus);box-shadow:0 0 0 3px rgba(11,107,79,.16)}
+button:focus-visible{outline:none}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:600px){.row{grid-template-columns:1fr}}
+
+.btn{
+  border:1px solid var(--rule-strong);background:#fff;border-radius:7px;
+  padding:8px 13px;cursor:pointer;font-size:13.5px;font-weight:500;
+}
+.btn:hover{border-color:var(--ink)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn:disabled:hover{border-color:var(--rule-strong)}
+.btn-primary{background:var(--credit);border-color:var(--credit);color:#fff}
+.btn-primary:hover{background:#095940;border-color:#095940}
+.btn-sm{padding:4px 9px;font-size:12px;border-radius:6px}
+.btn-ghost{border-color:transparent;background:transparent;color:var(--muted)}
+.btn-ghost:hover{color:var(--debt);border-color:var(--debt-soft);background:var(--debt-soft)}
+.btn-icon{font-size:15px;line-height:1;padding:7px 10px;font-family:var(--sans)}
+.btn-danger{color:var(--debt)}
+.btn-danger:hover{border-color:var(--debt);background:var(--debt-soft)}
+.btn-danger.armed{background:var(--debt);border-color:var(--debt);color:#fff}
+.btn-danger.armed:hover{background:#8E3524;border-color:#8E3524}
+
+/* ---------- people ---------- */
+.people-add{display:flex;gap:8px;margin-bottom:14px}
+.people-add input{flex:1}
+.people-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:1px}
+.person{
+  display:block;padding:7px 0;
+  border-bottom:1px dotted var(--rule-strong);
+}
+.person:last-child{border-bottom:none}
+.person-main{display:flex;align-items:center;gap:10px}
+.dot{width:9px;height:9px;border-radius:50%;flex:none}
+.person-stack{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.person-name{font-weight:500;line-height:1.25}
+.person-meta{display:flex;font-size:12px;line-height:1.3;margin-top:3px}
+.person-toggle{
+  display:inline-flex;align-items:center;gap:7px;
+  border:1px solid var(--rule-strong);background:var(--card);
+  padding:3px 4px 3px 10px;margin:0;cursor:pointer;
+  font-size:12px;color:var(--muted);text-align:left;border-radius:999px;
+  transition:border-color .14s ease,background .14s ease,color .14s ease;
+}
+.person-toggle:hover{border-color:var(--credit);background:var(--credit-soft);color:var(--ink)}
+.person-toggle b{font-weight:600;color:var(--ink)}
+.person-toggle .sep{opacity:.45}
+.person-toggle .caret{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:22px;height:22px;border-radius:50%;flex:none;
+  background:var(--credit-soft);color:var(--credit);
+  font-size:14px;line-height:1;transition:transform .18s ease;
+}
+.person-toggle:hover .caret{background:var(--credit);color:#fff}
+.person-toggle[aria-expanded="true"]{border-color:var(--credit);background:var(--credit-soft);color:var(--ink)}
+.person-toggle[aria-expanded="true"] .caret{transform:rotate(180deg);background:var(--credit);color:#fff}
+.person-toggle:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.person-net{font-size:13px;font-weight:600;white-space:nowrap}
+
+.pbreak{
+  margin:8px 0 4px 19px;border:1px solid var(--rule);border-radius:7px;
+  overflow:hidden;background:var(--paper);
+}
+.pbrow{
+  display:grid;grid-template-columns:1fr 78px 78px;gap:8px;
+  padding:5px 10px;font-size:12px;align-items:baseline;
+}
+.pbrow > span:not(:first-child){text-align:right}
+.pbrow-head{
+  font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+  background:var(--card);border-bottom:1px solid var(--rule);
+}
+.pb-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pb-paid{color:var(--credit)}
+.pbrow-skip{opacity:.5;text-decoration:line-through}
+.pbrow-empty{color:var(--muted);font-style:italic}
+.pbrow-total{border-top:1px solid var(--rule-strong);font-weight:600;background:var(--card)}
+.pbrow-net{font-weight:600;background:var(--card);border-top:1px dotted var(--rule-strong)}
+.empty{color:var(--muted);font-size:13.5px;margin:0;padding:6px 0}
+
+/* ---------- expense cards ---------- */
+.exp{border:1px solid var(--rule);border-radius:var(--r);margin-bottom:14px;background:#fff}
+.exp:last-child{margin-bottom:0}
+.exp-head{
+  display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;
+  border-bottom:1px solid transparent;
+}
+.exp[data-open="1"] .exp-head{border-bottom-color:var(--rule)}
+.exp-title{font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.exp-sum{font-family:var(--mono);font-size:13px;color:var(--muted);white-space:nowrap}
+.chev{width:14px;height:14px;flex:none;color:var(--muted);transition:transform .18s ease}
+.exp[data-open="1"] .chev{transform:rotate(180deg)}
+.exp-body{padding:15px 14px 16px}
+.switch{
+  display:inline-flex;align-items:center;gap:6px;flex:none;cursor:pointer;
+  font-size:12px;color:var(--muted);padding:3px 9px;border-radius:999px;
+  border:1px solid var(--rule-strong);background:var(--card);user-select:none;
+}
+.switch input{accent-color:var(--credit);margin:0;width:13px;height:13px;cursor:pointer}
+.switch:hover{border-color:var(--credit);color:var(--ink)}
+.exp[data-off="0"] .switch{border-color:var(--credit);background:var(--credit-soft);color:var(--credit);font-weight:500}
+.exp[data-off="1"]{background:var(--paper);border-style:dashed}
+.exp[data-off="1"] .exp-title{color:var(--muted);text-decoration:line-through}
+.exp[data-off="1"] .exp-sum{font-style:italic}
+.exp[data-off="1"] .exp-body{opacity:.55}
+.exp[data-open="0"] .exp-body{display:none}
+
+.checks{display:flex;flex-wrap:wrap;gap:6px}
+.check{
+  display:inline-flex;align-items:center;gap:7px;padding:5px 11px 5px 8px;
+  border:1px solid var(--rule-strong);border-radius:999px;cursor:pointer;font-size:13.5px;
+  background:#fff;user-select:none;
+}
+.check input{accent-color:var(--credit);margin:0;width:14px;height:14px}
+.check[data-on="1"]{border-color:var(--credit);background:var(--credit-soft)}
+.quick{display:flex;gap:6px;margin-left:auto}
+
+.breakdown{
+  margin-top:14px;border:1px solid var(--rule);border-radius:8px;overflow:hidden;
+}
+.breakdown-head{
+  display:flex;align-items:center;gap:8px;padding:7px 11px;background:var(--paper);
+  font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+}
+.brow{
+  display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;
+  padding:6px 11px;border-top:1px solid var(--rule);font-size:13.5px;
+}
+.brow.input-row{grid-template-columns:1fr 128px}
+.brow input{padding:5px 8px;text-align:right}
+.brow .who{display:flex;align-items:center;gap:8px;min-width:0}
+.brow .amt{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.brow .paid-tag{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--credit);background:var(--credit-soft);padding:1px 6px;border-radius:4px}
+.note{padding:7px 11px;border-top:1px solid var(--rule);font-size:12.5px;font-family:var(--mono)}
+.note.ok{color:var(--credit);background:var(--credit-soft)}
+.note.bad{color:var(--debt);background:var(--debt-soft)}
+
+/* ---------- balance rail (signature) ---------- */
+.rail{display:flex;flex-direction:column;gap:9px}
+.rail-scale{
+  display:grid;grid-template-columns:74px 1fr 86px;gap:10px;
+  font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+}
+.rail-scale .marks{display:flex;justify-content:space-between}
+.rail-row{display:grid;grid-template-columns:74px 1fr 86px;gap:10px;align-items:center}
+.rail-name{font-size:13.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rail-track{
+  position:relative;height:26px;background:var(--paper);border-radius:5px;overflow:hidden;
+}
+.rail-track::before{
+  content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--rule-strong);
+}
+.rail-bar{position:absolute;top:4px;bottom:4px;border-radius:3px}
+.rail-bar.pos{left:50%;background:var(--credit)}
+.rail-bar.neg{right:50%;background:var(--debt)}
+.rail-val{
+  font-family:var(--mono);font-size:12.5px;font-weight:600;text-align:right;white-space:nowrap;
+}
+.rail-val.pos{color:var(--credit)}
+.rail-val.neg{color:var(--debt)}
+.rail-val.zero{color:var(--muted);font-weight:400}
+@media (max-width:420px){
+  .rail-scale,.rail-row{grid-template-columns:58px 1fr 78px;gap:7px}
+}
+
+/* ---------- settlements ---------- */
+.seg{display:flex;border:1px solid var(--rule-strong);border-radius:7px;overflow:hidden;margin-bottom:12px}
+.seg button{
+  flex:1;border:none;background:var(--card);padding:7px 6px;cursor:pointer;
+  font-size:12.5px;color:var(--muted);line-height:1.3;
+}
+.seg button + button{border-left:1px solid var(--rule-strong)}
+.seg button:hover{background:var(--paper);color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--credit-soft);color:var(--credit);font-weight:600}
+.seg button:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
+.seg-note{margin:10px 0 0;font-size:11.5px;color:var(--muted);line-height:1.45}
+.settle{list-style:none;margin:0;padding:0}
+.settle li{padding:9px 0;border-bottom:1px dotted var(--rule-strong)}
+.settle li:last-child{border-bottom:none}
+.settle-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.settle .from{font-weight:600}
+.settle .arrow{color:var(--muted);font-family:var(--mono)}
+.settle .to{font-weight:600;color:var(--credit)}
+.settle .pay{margin-left:auto;font-family:var(--mono);font-weight:600}
+.settle-caret{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:22px;height:22px;border-radius:50%;flex:none;border:none;cursor:pointer;
+  background:var(--credit-soft);color:var(--credit);font-size:14px;line-height:1;
+  transition:transform .18s ease,background .14s ease,color .14s ease;
+}
+.settle-caret:hover{background:var(--credit);color:#fff}
+.settle-caret[aria-expanded="true"]{transform:rotate(180deg);background:var(--credit);color:#fff}
+.settle-caret:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+.sbreak{
+  margin:8px 0 2px;border:1px solid var(--rule);border-radius:7px;
+  overflow:hidden;background:var(--paper);
+}
+.sbrow{
+  display:grid;grid-template-columns:1fr auto;gap:8px;
+  padding:5px 10px;font-size:12px;align-items:baseline;
+}
+.sbrow > span:last-child{text-align:right}
+.sb-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sbrow-credit{color:var(--debt)}
+.sbrow-clear{color:var(--credit);font-weight:600}
+.sbrow-note{
+  color:var(--muted);font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;
+  border-top:1px dotted var(--rule-strong);padding-top:6px;
+}
+.sbrow-total{
+  border-top:1px solid var(--rule-strong);font-weight:600;background:var(--card);
+}
+
+.totals{
+  display:flex;gap:20px;flex-wrap:wrap;padding:12px 16px;
+  border-top:1px solid var(--rule);background:var(--paper);
+}
+.totals div{display:flex;flex-direction:column}
+.totals dt{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.totals dd{margin:2px 0 0;font-family:var(--mono);font-size:17px;font-weight:600}
+
+.flag{
+  display:flex;gap:9px;padding:10px 12px;margin-bottom:14px;border-radius:8px;
+  background:var(--debt-soft);color:var(--debt);font-size:13px;
+}
+.foot{max-width:1220px;margin:0 auto;padding:4px 22px 40px;color:var(--muted);font-size:12.5px}
+.toast{
+  position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(8px);
+  background:var(--ink);color:#fff;padding:9px 16px;border-radius:8px;font-size:13.5px;
+  opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;z-index:50;
+}
+.toast[data-on="1"]{opacity:1;transform:translateX(-50%) translateY(0)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-in">
+    <h1 class="wordmark">Tally<span>.</span></h1>
+    <p class="tagline">Split a trip, a dinner, a flat. Every rupee accounted for, down to the last paisa.</p>
+    <select id="currency" aria-label="Currency">
+      <option value="INR">₹ INR</option>
+      <option value="USD">$ USD</option>
+      <option value="EUR">€ EUR</option>
+      <option value="GBP">£ GBP</option>
+    </select>
+  </div>
+
+  <div class="toolbar">
+    <div class="tgroup">
+      <span class="tgroup-label">Your split (come back to it later)</span>
+      <div class="tgroup-btns">
+        <button class="btn btn-sm" id="btn-save"
+          title="Saves your participants and expenses to a file on this device, so you can open it again and carry on editing.">Save this split</button>
+        <button class="btn btn-sm" id="btn-resave" hidden
+          title="Saves your latest changes back to the same file, without asking where to put it.">Save changes</button>
+        <button class="btn btn-sm" id="btn-load"
+          title="Opens a split you saved earlier. Replaces the participants and expenses currently on screen.">Open a saved split</button>
+        <input type="file" id="file-input" accept="application/json" hidden>
+      </div>
+    </div>
+
+    <div class="tgroup">
+      <span class="tgroup-label">The result (to share or keep)</span>
+      <div class="tgroup-btns">
+        <button class="btn btn-sm" id="btn-copy"
+          title="Copies the balances and who-pays-whom as plain text, ready to paste into a chat.">Copy summary</button>
+        <button class="btn btn-sm" id="btn-excel"
+          title="Saves the balances, every individual share and the settle-up plan as a spreadsheet. For reading and sharing; it can't be opened back into this app.">Export to Excel</button>
+      </div>
+    </div>
+
+    <div class="tgroup tgroup-end">
+      <span class="tgroup-label">&nbsp;</span>
+      <div class="tgroup-btns">
+        <button class="btn btn-sm btn-icon" id="btn-undo" aria-label="Undo">↶</button>
+        <button class="btn btn-sm btn-icon" id="btn-redo" aria-label="Redo">↷</button>
+        <button class="btn btn-sm btn-danger" id="btn-clear"
+          title="Removes every participant and expense so you can begin a new split.">Start over</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="people-col">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Participants</h2>
+        <span class="count" id="ppl-count"></span>
+      </div>
+      <div class="panel-body">
+        <div class="people-add">
+          <input type="text" id="new-person" placeholder="Name" aria-label="New participant name" maxlength="24">
+          <button class="btn btn-primary" id="btn-add-person">Add</button>
+        </div>
+        <ul class="people-list" id="people"></ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="exp-col">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Expenses</h2>
+        <span class="count" id="exp-count"></span>
+      </div>
+      <div class="panel-body">
+        <div id="expenses"></div>
+        <button class="btn btn-primary" id="btn-add-exp" style="margin-top:14px">Add an expense</button>
+      </div>
+    </div>
+  </section>
+
+  <aside class="side">
+    <div class="panel">
+      <div class="panel-head"><h2>Who's up, who's down</h2></div>
+      <div class="panel-body">
+        <div id="rail"></div>
+      </div>
+      <dl class="totals" id="totals"></dl>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Settle up</h2>
+        <span class="count" id="settle-count"></span>
+        <button class="icon-btn" id="btn-copy-settle" aria-label="Copy the settle-up list"
+          title="Copy just this settle-up list">
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+            <rect x="5.5" y="1.5" width="9" height="11" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <path d="M10.5 14.5h-8a1 1 0 0 1-1-1v-9" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+      <div class="panel-body">
+        <div class="seg" id="settle-mode" role="group" aria-label="Settlement method">
+          <button type="button" data-mode="direct"
+            title="Everyone repays the person who actually paid for their share.">Pay who you owe</button>
+          <button type="button" data-mode="min"
+            title="Ignores who paid for what and clears all the balances in as few payments as possible.">Fewest payments</button>
+        </div>
+        <ul class="settle" id="settle"></ul>
+        <p class="seg-note" id="settle-note"></p>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<p class="foot">Splits are calculated in whole paise/cents, so the shares always add back up to the exact expense total; the leftover fraction is handed to the people at the top of the list rather than quietly dropped.</p>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================ state ============================ */
+const SYM = {INR:"₹", USD:"$", EUR:"€", GBP:"£"};
+const HUES = ["#0B6B4F","#A8402B","#2E5B8A","#8A6A1F","#6B3F7A","#1F7A73","#A03A62","#4A6B22"];
+
+let seq = 1;
+function nid(){
+  let id;
+  do { id = "k" + (seq++); } while (idTaken(id));
+  return id;
+}
+function idTaken(id){
+  return state.people.some(p => p.id === id) || state.expenses.some(e => e.id === id);
+}
+
+let state = {
+  currency: "INR",
+  people: [],
+  expenses: []
+};
+
+/* ============================ history ============================ */
+/* Each entry is a full JSON snapshot. The sessions are small enough that
+   snapshotting beats tracking individual edits, and it can't drift. */
+
+const HIST_MAX = 120;
+const COALESCE_MS = 900;
+let hist = [], hpos = -1, lastKey = null, lastAt = 0;
+
+const snapshot = () => JSON.stringify(state);
+
+function resetHistory(){
+  hist = [snapshot()];
+  hpos = 0;
+  lastKey = null;
+  updateHistoryUI();
+}
+
+/* Call after a change. `key` groups rapid edits to the same field into one
+   step, so a burst of typing undoes as a burst rather than character by character. */
+function push(key){
+  const s = snapshot();
+  if (s === hist[hpos]) return;                       /* nothing actually changed */
+  const now = Date.now();
+  if (key && key === lastKey && now - lastAt < COALESCE_MS && hpos > 0){
+    hist[hpos] = s;
+    lastAt = now;
+    updateHistoryUI();
+    return;
+  }
+  hist = hist.slice(0, hpos + 1);
+  hist.push(s);
+  hpos++;
+  if (hist.length > HIST_MAX){ hist.shift(); hpos--; }
+  lastKey = key || null;
+  lastAt = now;
+  updateHistoryUI();
+}
+
+function restore(i){
+  hpos = i;
+  lastKey = null;
+  state = JSON.parse(hist[i]);
+  $("#currency").value = state.currency;
+  renderAll();
+}
+
+function undo(){
+  if (hpos <= 0) return;
+  restore(hpos - 1);
+  toast("Undone");
+}
+
+function redo(){
+  if (hpos >= hist.length - 1) return;
+  restore(hpos + 1);
+  toast("Redone");
+}
+
+function updateHistoryUI(){
+  const u = $("#btn-undo"), r = $("#btn-redo");
+  if (!u || !r) return;
+  u.disabled = hpos <= 0;
+  r.disabled = hpos >= hist.length - 1;
+  u.title = u.disabled ? "Nothing to undo" : "Undo the last change (Ctrl+Z)";
+  r.title = r.disabled ? "Nothing to redo" : "Redo (Ctrl+Shift+Z)";
+}
+
+document.addEventListener("keydown", e => {
+  const mod = e.ctrlKey || e.metaKey;
+  if (!mod) return;
+  const k = e.key.toLowerCase();
+  if (k === "z" && !e.shiftKey){ e.preventDefault(); undo(); }
+  else if ((k === "z" && e.shiftKey) || k === "y"){ e.preventDefault(); redo(); }
+});
+
+/* ============================ money ============================ */
+const cents = v => {
+  const c = Math.round((parseFloat(v) || 0) * 100);
+  return Number.isFinite(c) ? c : 0;   /* "1e999" and friends become invalid, not ∞ */
+};
+function fmt(c){
+  const s = SYM[state.currency];
+  const neg = c < 0;
+  const n = Math.abs(c) / 100;
+  const str = n.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+  return (neg ? "−" : "") + s + str;
+}
+const personById = id => state.people.find(p => p.id === id);
+const colorOf = id => HUES[state.people.findIndex(p => p.id === id) % HUES.length];
+
+/* Largest-remainder allocation: split `total` across weights, exact to the cent. */
+function allocate(total, weights){
+  const sum = weights.reduce((a,b) => a + b, 0);
+  if (sum <= 0) return weights.map(() => 0);
+  const raw = weights.map(w => total * w / sum);
+  const base = raw.map(Math.floor);
+  let left = total - base.reduce((a,b) => a + b, 0);
+  const order = raw
+    .map((r,i) => ({i, frac: r - Math.floor(r)}))
+    .sort((a,b) => b.frac - a.frac || a.i - b.i);
+  for (let k = 0; k < left; k++) base[order[k % order.length].i]++;
+  return base;
+}
+
+/* Returns {shares:{id:cents}, ok, note, tone} for one expense. */
+function splitOf(exp){
+  const total = cents(exp.amount);
+  const ids = exp.parts.filter(id => personById(id));
+  const shares = {};
+  if (total <= 0) return {shares, ok:false, note:"Enter an amount above zero.", tone:"bad"};
+  if (!ids.length) return {shares, ok:false, note:"Tick at least one person under Split between.", tone:"bad"};
+
+  if (exp.type === "equal"){
+    const each = allocate(total, ids.map(() => 1));
+    ids.forEach((id,i) => shares[id] = each[i]);
+    const base = Math.floor(total / ids.length);
+    const rem = total - base * ids.length;
+    const note = rem === 0
+      ? fmt(total) + " ÷ " + ids.length + " = " + fmt(base) + " each"
+      : fmt(total) + " ÷ " + ids.length + " = " + fmt(base) + " each, " + rem + " extra "
+        + (state.currency === "INR" ? "paise" : "cents") + " to the top " + rem;
+    return {shares, ok:true, note, tone:"ok"};
+  }
+
+  if (exp.type === "exact"){
+    let sum = 0, neg = false;
+    ids.forEach(id => {
+      const c = cents(exp.vals[id]);
+      if (c < 0) neg = true;
+      shares[id] = Math.max(0, c);
+      sum += Math.max(0, c);
+    });
+    if (neg) return {shares, ok:false, note:"Amounts can't be negative.", tone:"bad"};
+    const diff = total - sum;
+    if (diff === 0) return {shares, ok:true, note:"Adds up to " + fmt(total) + ". ✓", tone:"ok"};
+    return {shares, ok:false, tone:"bad",
+      note: diff > 0 ? fmt(diff) + " still unassigned" : fmt(-diff) + " over the total"};
+  }
+
+  if (exp.type === "percent"){
+    const w = ids.map(id => Math.max(0, parseFloat(exp.vals[id]) || 0));
+    const pct = w.reduce((a,b) => a + b, 0);
+    if (Math.abs(pct - 100) > 0.0001){
+      ids.forEach((id,i) => shares[id] = 0);
+      return {shares, ok:false, tone:"bad",
+        note:"Percentages total " + pct.toFixed(2).replace(/\.?0+$/,"") + "%, needs 100%"};
+    }
+    const each = allocate(total, w);
+    ids.forEach((id,i) => shares[id] = each[i]);
+    return {shares, ok:true, note:"100% of " + fmt(total) + " assigned. ✓", tone:"ok"};
+  }
+
+  /* shares */
+  const w = ids.map(id => Math.max(0, parseFloat(exp.vals[id]) || 0));
+  const sum = w.reduce((a,b) => a + b, 0);
+  if (sum <= 0){
+    ids.forEach(id => shares[id] = 0);
+    return {shares, ok:false, note:"Give at least one person a share above zero.", tone:"bad"};
+  }
+  const each = allocate(total, w);
+  ids.forEach((id,i) => shares[id] = each[i]);
+  return {shares, ok:true, note:fmt(total) + " over " + (+sum.toFixed(4)) + " shares", tone:"ok"};
+}
+
+/* ============================ ledger ============================ */
+function ledger(){
+  const paid = {}, owed = {};
+  state.people.forEach(p => { paid[p.id] = 0; owed[p.id] = 0; });
+  let total = 0, skipped = 0;
+
+  state.expenses.forEach(exp => {
+    if (exp.included === false) return;
+    if (paid[exp.paidBy] === undefined){ skipped++; return; }   /* payer missing: don't count one side only */
+    const s = splitOf(exp);
+    if (!s.ok){ skipped++; return; }
+    const amt = cents(exp.amount);
+    total += amt;
+    paid[exp.paidBy] += amt;
+    Object.entries(s.shares).forEach(([id,c]) => { if (owed[id] !== undefined) owed[id] += c; });
+  });
+
+  const net = {};
+  state.people.forEach(p => net[p.id] = paid[p.id] - owed[p.id]);
+  return {paid, owed, net, total, skipped};
+}
+
+/* Two ways to settle. "direct" mirrors what actually happened: you repay the
+   person who fronted your share. "min" ignores history and just clears the
+   nets in as few payments as possible. */
+let settleMode = "direct";
+const openSettle = new Set();
+
+function directSettlements(){
+  const pair = new Map();
+  state.expenses.forEach(e => {
+    if (e.included === false) return;
+    if (!personById(e.paidBy)) return;
+    const s = splitOf(e);
+    if (!s.ok) return;
+    e.parts.forEach(id => {
+      if (id === e.paidBy) return;
+      const amt = s.shares[id] || 0;
+      if (!amt) return;
+      const k = id + "|" + e.paidBy;
+      if (!pair.has(k)) pair.set(k, {amt:0, lines:[]});
+      const p = pair.get(k);
+      p.amt += amt;
+      p.lines.push({desc: e.desc || "Untitled", amt});
+    });
+  });
+
+  /* If two people owe each other, cancel it down to one payment. */
+  const out = [], done = new Set();
+  pair.forEach((v, k) => {
+    if (done.has(k)) return;
+    const [a, b] = k.split("|");
+    const rk = b + "|" + a;
+    const back = pair.get(rk);
+    done.add(k); done.add(rk);
+
+    const net = v.amt - (back ? back.amt : 0);
+    if (net === 0) return;
+    const forward = net > 0;
+    const owes = forward ? v.lines : (back ? back.lines : []);
+    const credits = forward ? (back ? back.lines : []) : v.lines;
+
+    out.push({
+      from: forward ? a : b,
+      to: forward ? b : a,
+      amt: Math.abs(net),
+      lines: [
+        ...owes.map(l => ({...l, sign: 1})),
+        ...credits.map(l => ({...l, sign: -1}))
+      ]
+    });
+  });
+  return out.sort((x, y) => y.amt - x.amt);
+}
+
+const currentSettlements = net =>
+  settleMode === "min" ? settlements(net) : directSettlements();
+
+/* Greedy min-cash-flow: at most n−1 transfers. */
+function settlements(net){
+  const owe = [], get = [];
+  state.people.forEach(p => {
+    const n = net[p.id];
+    if (n < 0) owe.push({id:p.id, amt:-n, start:-n});
+    else if (n > 0) get.push({id:p.id, amt:n, start:n});
+  });
+  owe.sort((a,b) => b.amt - a.amt);
+  get.sort((a,b) => b.amt - a.amt);
+  const out = [];
+  let i = 0, j = 0;
+  while (i < owe.length && j < get.length){
+    const amt = Math.min(owe[i].amt, get[j].amt);
+    if (amt > 0) out.push({
+      from: owe[i].id, to: get[j].id, amt,
+      meta: {
+        fromOwes: owe[i].start,
+        fromLeft: owe[i].amt - amt,
+        toDue: get[j].start,
+        toLeft: get[j].amt - amt
+      }
+    });
+    owe[i].amt -= amt; get[j].amt -= amt;
+    if (owe[i].amt === 0) i++;
+    if (get[j].amt === 0) j++;
+  }
+  return out;
+}
+
+/* ============================ dom helpers ============================ */
+const $ = s => document.querySelector(s);
+const el = (tag, cls, txt) => {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (txt !== undefined) n.textContent = txt;
+  return n;
+};
+function toast(msg){
+  const t = $("#toast");
+  t.textContent = msg;
+  t.dataset.on = "1";
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.dataset.on = "0", 2200);
+}
+
+/* ============================ render: people ============================ */
+/* Which people have their per-expense breakdown expanded. */
+const openBreak = new Set();
+
+function renderPeople(){
+  const list = $("#people");
+  list.innerHTML = "";
+  $("#ppl-count").textContent = state.people.length || "";
+
+  if (!state.people.length){
+    openBreak.clear();
+    list.append(el("p", "empty", "Add everyone who's chipping in. Names only. No accounts, no sign-up."));
+    return;
+  }
+  const L = ledger();
+  state.people.forEach(p => {
+    const li = el("li", "person");
+    const row = el("div", "person-main");
+
+    const dot = el("span", "dot");
+    dot.style.background = colorOf(p.id);
+
+    const stack = el("span", "person-stack");
+    stack.append(el("span", "person-name", p.name));
+
+    const meta = el("span", "person-meta");
+    const expanded = openBreak.has(p.id);
+
+    const toggle = el("button", "person-toggle");
+    toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+    toggle.title = expanded ? "Hide the breakdown" : "See which expenses make up these figures";
+    toggle.innerHTML =
+      "paid <b class='num'>" + fmt(L.paid[p.id]) + "</b>" +
+      "<span class='sep'>·</span>" +
+      "share <b class='num'>" + fmt(L.owed[p.id]) + "</b>" +
+      "<span class='caret'>\u25BE</span>";
+    toggle.onclick = () => {
+      if (expanded) openBreak.delete(p.id); else openBreak.add(p.id);
+      renderPeople();
+    };
+    meta.append(toggle);
+    stack.append(meta);
+
+    const n = L.net[p.id];
+    const bal = el("span", "person-net num");
+    bal.style.color = n > 0 ? "var(--credit)" : n < 0 ? "var(--debt)" : "var(--muted)";
+    bal.textContent = n === 0 ? "settled" : (n > 0 ? "+" : "") + fmt(n);
+    bal.title = n === 0 ? "All square" : n > 0 ? "Is owed this" : "Owes this";
+
+    const rm = el("button", "btn btn-sm btn-ghost", "Remove");
+    rm.onclick = () => removePerson(p.id);
+
+    row.append(dot, stack, bal, rm);
+    li.append(row);
+    if (expanded) li.append(breakdownFor(p, L));
+    list.append(li);
+  });
+}
+
+/* Per-expense detail behind one person's paid and share totals. */
+function breakdownFor(p, L){
+  const box = el("div", "pbreak");
+
+  const head = el("div", "pbrow pbrow-head");
+  head.append(el("span", null, "Expense"), el("span", null, "paid"), el("span", null, "share"));
+  box.append(head);
+
+  let any = false;
+  state.expenses.forEach(e => {
+    const sp = splitOf(e);
+    const isPayer = e.paidBy === p.id;
+    const inSplit = e.parts.includes(p.id);
+    if (!isPayer && !inSplit) return;          /* nothing to do with them */
+    any = true;
+
+    const counted = sp.ok && e.included !== false;
+    const r = el("div", "pbrow" + (counted ? "" : " pbrow-skip"));
+    const name = el("span", "pb-name", e.desc || "Untitled");
+    if (e.included === false) name.title = "Left out of the split";
+    else if (!sp.ok) name.title = "Incomplete, so not counted in the totals";
+    r.append(name);
+    r.append(el("span", "pb-paid num", isPayer && counted ? fmt(cents(e.amount)) : "—"));
+    r.append(el("span", "pb-share num", inSplit && counted ? fmt(sp.shares[p.id] || 0) : "—"));
+    box.append(r);
+  });
+
+  if (!any){
+    const r = el("div", "pbrow pbrow-empty");
+    r.append(el("span", null, "Not on any expense yet"));
+    box.append(r);
+  } else {
+    const t = el("div", "pbrow pbrow-total");
+    t.append(el("span", null, "Total"),
+             el("span", "num", fmt(L.paid[p.id])),
+             el("span", "num", fmt(L.owed[p.id])));
+    box.append(t);
+
+    const n = L.net[p.id];
+    const f = el("div", "pbrow pbrow-net");
+    f.append(el("span", null, n === 0 ? "All square" : n > 0 ? "Is owed" : "Owes"),
+             el("span", null, ""),
+             el("span", "num", n === 0 ? fmt(0) : fmt(Math.abs(n))));
+    f.style.color = n > 0 ? "var(--credit)" : n < 0 ? "var(--debt)" : "var(--muted)";
+    box.append(f);
+  }
+  return box;
+}
+
+function addPerson(){
+  const input = $("#new-person");
+  const name = input.value.trim();
+  if (!name) return;
+  if (state.people.some(p => p.name.toLowerCase() === name.toLowerCase())){
+    toast("There's already someone called " + name);
+    return;
+  }
+  state.people.push({id:nid(), name});
+  input.value = "";
+  input.focus();
+  push();
+  renderAll();
+}
+
+function removePerson(id){
+  const paying = state.expenses.filter(e => e.paidBy === id);
+  if (paying.length){
+    toast(personById(id).name + " paid for " + paying.length + " expense" + (paying.length > 1 ? "s" : "") + ". Change the payer first.");
+    return;
+  }
+  state.people = state.people.filter(p => p.id !== id);
+  state.expenses.forEach(e => {
+    e.parts = e.parts.filter(x => x !== id);
+    delete e.vals[id];
+  });
+  push();
+  renderAll();
+}
+
+/* ============================ render: expenses ============================ */
+function renderExpenses(){
+  const wrap = $("#expenses");
+  wrap.innerHTML = "";
+  const live = state.expenses.filter(e => e.included !== false).length;
+  $("#exp-count").textContent = state.expenses.length
+    ? (live === state.expenses.length ? live : live + " of " + state.expenses.length)
+    : "";
+
+  if (!state.people.length){
+    wrap.append(el("p", "empty", "Add participants first, then expenses have somewhere to land."));
+    return;
+  }
+  if (!state.expenses.length){
+    wrap.append(el("p", "empty", "Nothing recorded yet. Add the first bill below."));
+    return;
+  }
+  state.expenses.forEach(exp => wrap.append(expenseCard(exp)));
+}
+
+function expenseCard(exp){
+  const card = el("div", "exp");
+  card.dataset.open = exp.open ? "1" : "0";
+  card.dataset.off = exp.included === false ? "1" : "0";
+  card.dataset.id = exp.id;
+
+  /* head */
+  const head = el("div", "exp-head");
+  head.tabIndex = 0;
+  head.setAttribute("role", "button");
+  head.setAttribute("aria-expanded", exp.open ? "true" : "false");
+  const title = el("span", "exp-title", exp.desc ? "Expense for " + exp.desc : "Untitled expense");
+  const payer = personById(exp.paidBy);
+  const sumText = () => {
+    const pn = personById(exp.paidBy);
+    return exp.included === false
+      ? "not in the split"
+      : fmt(cents(exp.amount)) + (pn ? " · " + pn.name : "") + " · " + exp.parts.length + " way";
+  };
+  const sum = el("span", "exp-sum", sumText());
+  const chev = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  chev.setAttribute("class", "chev"); chev.setAttribute("viewBox", "0 0 12 8");
+  chev.innerHTML = "<path d='M1 1l5 5 5-5' fill='none' stroke='currentColor' stroke-width='1.6' stroke-linecap='round'/>";
+  const inc = el("label", "switch");
+  inc.title = "Uncheck to leave this expense out of the split without deleting it";
+  const incBox = el("input");
+  incBox.type = "checkbox";
+  incBox.checked = exp.included !== false;
+  incBox.onchange = () => {
+    exp.included = incBox.checked;
+    push();
+    redrawCard(exp);
+  };
+  inc.append(incBox, el("span", null, "Include"));
+
+  const toggle = () => {
+    exp.open = !exp.open;
+    card.dataset.open = exp.open ? "1" : "0";
+    head.setAttribute("aria-expanded", exp.open ? "true" : "false");
+  };
+  head.onclick = e => { if (!e.target.closest("button, label, input")) toggle(); };
+  head.onkeydown = e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); toggle(); } };
+  const del = el("button", "btn btn-sm btn-ghost", "Delete");
+  del.onclick = () => {
+    state.expenses = state.expenses.filter(x => x.id !== exp.id);
+    push();
+    renderAll();
+  };
+  head.append(title, sum, inc, del, chev);
+
+  /* body */
+  const body = el("div", "exp-body");
+
+  const fDesc = el("label", "field");
+  fDesc.append(el("span", null, "Description"));
+  const iDesc = el("input"); iDesc.type = "text"; iDesc.value = exp.desc; iDesc.placeholder = "Dinner at Barbeque Nation";
+  iDesc.oninput = () => {
+    exp.desc = iDesc.value;
+    title.textContent = exp.desc ? "Expense for " + exp.desc : "Untitled expense";
+    push("desc:" + exp.id);
+  };
+  fDesc.append(iDesc);
+  body.append(fDesc);
+
+  const row1 = el("div", "row");
+  const fAmt = el("label", "field");
+  fAmt.append(el("span", null, "Amount"));
+  const iAmt = el("input"); iAmt.type = "number"; iAmt.min = "0"; iAmt.step = "0.01";
+  iAmt.value = exp.amount; iAmt.placeholder = "0.00";
+  fAmt.append(iAmt);
+
+  const fPaid = el("label", "field");
+  fPaid.append(el("span", null, "Paid by"));
+  const sPaid = el("select");
+  state.people.forEach(p => {
+    const o = el("option", null, p.name); o.value = p.id;
+    if (p.id === exp.paidBy) o.selected = true;
+    sPaid.append(o);
+  });
+  fPaid.append(sPaid);
+  row1.append(fAmt, fPaid);
+  body.append(row1);
+
+  const fType = el("label", "field");
+  fType.append(el("span", null, "Split type"));
+  const sType = el("select");
+  [["equal","Equally"],["exact","By exact amount"],["percent","By percentage"],["shares","By shares"]]
+    .forEach(([v,l]) => { const o = el("option", null, l); o.value = v; if (v === exp.type) o.selected = true; sType.append(o); });
+  fType.append(sType);
+  body.append(fType);
+
+  /* split between */
+  const fFor = el("div", "field");
+  const forHead = el("div");
+  forHead.style.cssText = "display:flex;align-items:center;margin-bottom:5px";
+  const forLbl = el("span", null, "Split between");
+  forLbl.style.cssText = "font-size:12px;font-weight:500;color:var(--muted)";
+  const quick = el("div", "quick");
+  const bAll = el("button", "btn btn-sm", "Everyone");
+  const bNone = el("button", "btn btn-sm", "Clear");
+  bAll.onclick = () => { exp.parts = state.people.map(p => p.id); push(); redrawCard(exp); };
+  bNone.onclick = () => { exp.parts = []; push(); redrawCard(exp); };
+  quick.append(bAll, bNone);
+  forHead.append(forLbl, quick);
+
+  const checks = el("div", "checks");
+  state.people.forEach(p => {
+    const on = exp.parts.includes(p.id);
+    const lab = el("label", "check");
+    lab.dataset.on = on ? "1" : "0";
+    const cb = el("input"); cb.type = "checkbox"; cb.checked = on;
+    cb.onchange = () => {
+      if (cb.checked){ if (!exp.parts.includes(p.id)) exp.parts.push(p.id); }
+      else exp.parts = exp.parts.filter(x => x !== p.id);
+      exp.parts.sort((a,b) => state.people.findIndex(x => x.id === a) - state.people.findIndex(x => x.id === b));
+      push();
+      redrawCard(exp);
+    };
+    lab.append(cb, el("span", null, p.name));
+    checks.append(lab);
+  });
+  fFor.append(forHead, checks);
+  body.append(fFor);
+
+  /* breakdown */
+  const bd = el("div", "breakdown");
+  body.append(bd);
+  const drawBreakdown = () => { bd.innerHTML = ""; bd.append(...breakdownRows(exp, refreshSoft)); };
+
+  const refreshSoft = () => {
+    /* update everything that doesn't own focus */
+    const s = splitOf(exp);
+    bd.querySelectorAll("[data-share]").forEach(n => {
+      n.textContent = fmt(s.shares[n.dataset.share] || 0);
+    });
+    const note = bd.querySelector(".note");
+    if (note){ note.textContent = s.note; note.className = "note " + s.tone; }
+    bd.querySelectorAll("[data-who]").forEach(n => {
+      const tag = n.querySelector(".paid-tag");
+      const should = n.dataset.who === exp.paidBy;
+      if (should && !tag) n.append(el("span", "paid-tag", "paid"));
+      else if (!should && tag) tag.remove();
+    });
+    sum.textContent = sumText();
+    renderPeople();
+    renderSummary();
+  };
+
+  iAmt.oninput = () => { exp.amount = iAmt.value; push("amt:" + exp.id); refreshSoft(); };
+  sPaid.onchange = () => { exp.paidBy = sPaid.value; push(); refreshSoft(); };
+  sType.onchange = () => { exp.type = sType.value; exp.vals = {}; push(); redrawCard(exp); };
+
+  drawBreakdown();
+  card.append(head, body);
+  return card;
+}
+
+function breakdownRows(exp, onEdit){
+  const out = [];
+  const s = splitOf(exp);
+  const ids = exp.parts.filter(id => personById(id));
+
+  const head = el("div", "breakdown-head");
+  head.append(el("span", null,
+    exp.type === "equal" ? "Each person owes" :
+    exp.type === "exact" ? "Enter each person's amount" :
+    exp.type === "percent" ? "Enter each person's percentage" :
+                            "Enter each person's shares"));
+  out.push(head);
+
+  if (!ids.length){
+    const r = el("div", "brow");
+    r.append(el("span", "who", "Nobody selected"), el("span", "amt", "—"));
+    out.push(r);
+  }
+
+  ids.forEach(id => {
+    const p = personById(id);
+    const r = el("div", "brow" + (exp.type === "equal" ? "" : " input-row"));
+    const who = el("span", "who");
+    who.dataset.who = id;
+    const dot = el("span", "dot"); dot.style.background = colorOf(id);
+    who.append(dot, el("span", null, p.name));
+    if (id === exp.paidBy) who.append(el("span", "paid-tag", "paid"));
+    r.append(who);
+
+    if (exp.type === "equal"){
+      const a = el("span", "amt", fmt(s.shares[id] || 0));
+      a.dataset.share = id;
+      r.append(a);
+    } else {
+      const box = el("div");
+      box.style.cssText = "display:flex;align-items:center;gap:8px;justify-content:flex-end";
+      const inp = el("input"); inp.type = "number"; inp.step = "0.01"; inp.min = "0";
+      inp.value = exp.vals[id] ?? "";
+      inp.placeholder = exp.type === "percent" ? "%" : exp.type === "shares" ? "1" : "0.00";
+      inp.style.width = exp.type === "exact" ? "100%" : "72px";
+      inp.oninput = () => { exp.vals[id] = inp.value; push("val:" + exp.id + ":" + id); onEdit(); };
+      box.append(inp);
+      if (exp.type !== "exact"){
+        const a = el("span", "amt", fmt(s.shares[id] || 0));
+        a.dataset.share = id;
+        a.style.cssText = "font-size:12.5px;color:var(--muted);min-width:64px;text-align:right";
+        box.append(a);
+      }
+      r.append(box);
+    }
+    out.push(r);
+  });
+
+  const note = el("div", "note " + s.tone, s.note);
+  out.push(note);
+  return out;
+}
+
+function redrawCard(exp){
+  const old = document.querySelector('.exp[data-id="' + exp.id + '"]');
+  if (!old) return renderAll();
+  old.replaceWith(expenseCard(exp));
+  renderPeople();
+  renderSummary();
+}
+
+function addExpense(){
+  if (!state.people.length){ toast("Add at least one participant first."); return; }
+  state.expenses.forEach(e => e.open = false);
+  state.expenses.push({
+    id: nid(), desc: "", amount: "", paidBy: state.people[0].id,
+    type: "equal", parts: state.people.map(p => p.id), vals: {}, included: true, open: true
+  });
+  push();
+  renderAll();
+  const cards = document.querySelectorAll(".exp");
+  const last = cards[cards.length - 1];
+  if (last) last.querySelector("input").focus();
+}
+
+/* ============================ render: summary ============================ */
+function renderSummary(){
+  const L = ledger();
+  const rail = $("#rail");
+  rail.innerHTML = "";
+
+  if (!state.people.length){
+    rail.append(el("p", "empty", "Balances appear once there are people and expenses."));
+    $("#totals").innerHTML = "";
+    $("#settle").innerHTML = "";
+    $("#settle-count").textContent = "";
+    $("#btn-copy-settle").disabled = true;
+    return;
+  }
+
+  if (L.skipped){
+    const f = el("div", "flag");
+    f.append(el("span", null,
+      L.skipped + " expense" + (L.skipped > 1 ? "s are" : " is") + " incomplete and left out of the balances below."));
+    rail.append(f);
+  }
+
+  const max = Math.max(1, ...state.people.map(p => Math.abs(L.net[p.id])));
+  const scale = el("div", "rail-scale");
+  scale.append(el("div", null, ""));
+  const marks = el("div", "marks");
+  marks.append(el("span", null, "owes"), el("span", null, "is owed"));
+  scale.append(marks, el("div"));
+  rail.append(scale);
+
+  const box = el("div", "rail");
+  state.people.forEach(p => {
+    const n = L.net[p.id];
+    const row = el("div", "rail-row");
+    const nm = el("div", "rail-name", p.name);
+    nm.title = "paid " + fmt(L.paid[p.id]) + " · share " + fmt(L.owed[p.id]);
+    const track = el("div", "rail-track");
+    if (n !== 0){
+      const bar = el("div", "rail-bar " + (n > 0 ? "pos" : "neg"));
+      bar.style.width = (Math.abs(n) / max * 48) + "%";
+      track.append(bar);
+    }
+    const val = el("span", "rail-val " + (n > 0 ? "pos" : n < 0 ? "neg" : "zero"),
+      n === 0 ? "settled" : fmt(Math.abs(n)));
+    val.title = n === 0 ? "All square" : n > 0 ? "Is owed this" : "Owes this";
+    row.append(nm, track, val);
+    box.append(row);
+  });
+  rail.append(box);
+
+  const t = $("#totals");
+  t.innerHTML = "";
+  const cell = (k,v,color) => {
+    const d = el("div");
+    d.append(el("dt", null, k));
+    const dd = el("dd", null, v);
+    if (color) dd.style.color = color;
+    d.append(dd);
+    return d;
+  };
+  const owedTotal = state.people.reduce((a,p) => a + Math.max(0, -L.net[p.id]), 0);
+  t.append(cell("Total spent", fmt(L.total)));
+  t.append(cell("Outstanding", fmt(owedTotal), owedTotal ? "var(--debt)" : "var(--credit)"));
+
+  const list = $("#settle");
+  list.innerHTML = "";
+  const moves = currentSettlements(L.net);
+  $("#settle-count").textContent = moves.length || "";
+  $("#settle-mode").querySelectorAll("button").forEach(b =>
+    b.setAttribute("aria-pressed", b.dataset.mode === settleMode ? "true" : "false"));
+
+  const note = $("#settle-note");
+  $("#btn-copy-settle").disabled = !moves.length;
+  if (!moves.length){
+    list.append(el("p", "empty", L.total ? "All square. Nobody owes anybody." : "Add an expense to see who pays whom."));
+    note.textContent = "";
+    return;
+  }
+  const other = settleMode === "min" ? directSettlements().length : settlements(L.net).length;
+  note.textContent = settleMode === "direct"
+    ? "Each payment goes to the person who covered that cost. " +
+      (other < moves.length
+        ? "Switching to fewest payments would settle the same balances in " + other + "."
+        : "Already the fewest payments possible.")
+    : "Balances only: you may be paying someone you never bought anything from. " +
+      (other > moves.length
+        ? "Paying who you owe would take " + other + " payments instead."
+        : "Same number as paying who you owe.");
+  moves.forEach(m => {
+    const li = el("li");
+    const key = m.from + "|" + m.to;
+    const open = openSettle.has(key);
+
+    const row = el("div", "settle-row");
+    const from = el("span", "from", personById(m.from).name);
+    from.style.color = colorOf(m.from);
+    const to = el("span", "to", personById(m.to).name);
+    to.style.color = colorOf(m.to);
+    row.append(from, el("span", "arrow", "\u2192"), to, el("span", "pay", fmt(m.amt)));
+
+    if ((m.lines && m.lines.length) || m.meta){
+      const caret = el("button", "settle-caret", "\u25BE");
+      caret.setAttribute("aria-expanded", open ? "true" : "false");
+      caret.setAttribute("aria-label", "What makes up this payment");
+      caret.title = open ? "Hide the breakdown" : "What makes up this payment";
+      caret.onclick = () => {
+        if (open) openSettle.delete(key); else openSettle.add(key);
+        renderSummary();
+      };
+      row.append(caret);
+    }
+    li.append(row);
+
+    if (open && m.meta){
+      const box = el("div", "sbreak");
+      const fromName = personById(m.from).name;
+      const toName = personById(m.to).name;
+      const line = (label, value, cls) => {
+        const r = el("div", "sbrow" + (cls ? " " + cls : ""));
+        r.append(el("span", "sb-name", label));
+        r.append(el("span", value === null ? "" : "num", value === null ? "" : value));
+        return r;
+      };
+      box.append(line(fromName + " owes the group", fmt(m.meta.fromOwes)));
+      box.append(line(toName + " is owed by the group", fmt(m.meta.toDue)));
+      const note = el("div", "sbrow sbrow-note");
+      note.append(el("span", null, "so " + fromName + " settles part of it with " + toName), el("span", null, ""));
+      box.append(note);
+      box.append(line("This payment", fmt(m.amt)));
+      box.append(line(
+        m.meta.fromLeft ? fromName + " still owes" : fromName + " is then square",
+        m.meta.fromLeft ? fmt(m.meta.fromLeft) : null,
+        m.meta.fromLeft ? "" : "sbrow-clear"));
+      box.append(line(
+        m.meta.toLeft ? toName + " is still owed" : toName + " is then square",
+        m.meta.toLeft ? fmt(m.meta.toLeft) : null,
+        m.meta.toLeft ? "" : "sbrow-clear"));
+      li.append(box);
+    } else if (open && m.lines){
+      const box = el("div", "sbreak");
+      m.lines.forEach(l => {
+        const r = el("div", "sbrow" + (l.sign < 0 ? " sbrow-credit" : ""));
+        r.append(el("span", "sb-name", l.desc));
+        r.append(el("span", "num", (l.sign < 0 ? "\u2212" : "") + fmt(l.amt)));
+        box.append(r);
+      });
+      if (m.lines.some(l => l.sign < 0)){
+        const note = el("div", "sbrow sbrow-note");
+        note.append(el("span", null, "less what " + personById(m.to).name + " owes back"), el("span", null, ""));
+        box.insertBefore(note, box.children[m.lines.filter(l => l.sign > 0).length]);
+      }
+      const tot = el("div", "sbrow sbrow-total");
+      tot.append(el("span", null, "Pays"), el("span", "num", fmt(m.amt)));
+      box.append(tot);
+      li.append(box);
+    }
+    list.append(li);
+  });
+}
+
+function renderAll(){
+  renderPeople();
+  renderExpenses();
+  renderSummary();
+  const empty = !state.people.length && !state.expenses.length;
+  ["#btn-copy","#btn-excel","#btn-save","#btn-resave","#btn-clear"].forEach(sel => {
+    const b = $(sel);
+    if (b.dataset.tip === undefined) b.dataset.tip = b.title;   /* keep the real one */
+    b.disabled = empty;
+    b.title = empty ? "Add someone first" : b.dataset.tip;
+  });
+  updateHistoryUI();
+}
+
+$("#settle-mode").querySelectorAll("button").forEach(b => {
+  b.onclick = () => { settleMode = b.dataset.mode; openSettle.clear(); renderSummary(); };
+});
+
+$("#btn-undo").onclick = undo;
+$("#btn-redo").onclick = redo;
+
+/* ============================ save / load / copy ============================ */
+function summaryText(){
+  const L = ledger();
+  const lines = [];
+  lines.push("TALLY expense summary");
+  lines.push("Total spent: " + fmt(L.total));
+  lines.push("");
+  lines.push("Expenses");
+  state.expenses.forEach(e => {
+    const s = splitOf(e);
+    const payer = personById(e.paidBy);
+    const off = e.included === false;
+    lines.push("  " + (e.desc || "untitled") + ": " + fmt(cents(e.amount)) +
+      " paid by " + (payer ? payer.name : "?") +
+      (off ? "  [left out]" : s.ok ? "" : "  [incomplete, excluded]"));
+    if (off) return;
+    e.parts.forEach(id => {
+      const p = personById(id);
+      if (p) lines.push("      " + p.name + ": " + fmt(s.shares[id] || 0));
+    });
+  });
+  lines.push("");
+  lines.push("Balances");
+  state.people.forEach(p => {
+    const n = L.net[p.id];
+    lines.push("  " + p.name + ": paid " + fmt(L.paid[p.id]) + ", share " + fmt(L.owed[p.id]) +
+      " → " + (n === 0 ? "settled" : n > 0 ? "is owed " + fmt(n) : "owes " + fmt(-n)));
+  });
+  lines.push("");
+  lines.push("Settle up (" + (settleMode === "min" ? "fewest payments" : "pay who you owe") + ")");
+  const moves = currentSettlements(L.net);
+  if (!moves.length) lines.push("  Nothing to settle.");
+  moves.forEach(m => {
+    lines.push("  " + personById(m.from).name + " pays " + personById(m.to).name + " " + fmt(m.amt));
+    (m.lines || []).forEach(l =>
+      lines.push("      " + (l.sign < 0 ? "less " : "") + l.desc + ": " + fmt(l.amt)));
+  });
+  return lines.join("\n");
+}
+
+function settleText(){
+  const L = ledger();
+  const moves = currentSettlements(L.net);
+  const lines = [];
+  lines.push("Settle up: " + (settleMode === "min" ? "fewest payments" : "pay who you owe"));
+  if (!moves.length){
+    lines.push(L.total ? "All square. Nobody owes anybody." : "Nothing to settle yet.");
+    return lines.join("\n");
+  }
+  moves.forEach(m => {
+    const f = personById(m.from).name, t = personById(m.to).name;
+    lines.push(f + " pays " + t + " " + fmt(m.amt));
+    (m.lines || []).forEach(l =>
+      lines.push("    " + (l.sign < 0 ? "less " : "") + l.desc + ": " + fmt(l.amt)));
+    if (m.meta){
+      lines.push("    " + f + " owes the group " + fmt(m.meta.fromOwes) +
+                 "; " + t + " is owed " + fmt(m.meta.toDue));
+      if (m.meta.fromLeft) lines.push("    " + f + " still owes " + fmt(m.meta.fromLeft) + " after this");
+      if (m.meta.toLeft) lines.push("    " + t + " is still owed " + fmt(m.meta.toLeft) + " after this");
+    }
+  });
+  return lines.join("\n");
+}
+
+async function copyText(txt, msg){
+  try { await navigator.clipboard.writeText(txt); }
+  catch {
+    const ta = el("textarea");
+    ta.value = txt;
+    document.body.append(ta);
+    ta.select();
+    document.execCommand("copy");
+    ta.remove();
+  }
+  toast(msg);
+}
+
+$("#btn-copy-settle").onclick = () => copyText(settleText(), "Settle-up list copied.");
+
+$("#btn-copy").onclick = async () => {
+  if (!state.people.length && !state.expenses.length){
+    toast("Nothing to copy yet. Add someone first.");
+    return;
+  }
+  const txt = summaryText();
+  try { await navigator.clipboard.writeText(txt); toast("Summary copied as text."); }
+  catch { 
+    const ta = el("textarea"); ta.value = txt; document.body.append(ta); ta.select();
+    document.execCommand("copy"); ta.remove(); toast("Summary copied as text.");
+  }
+};
+
+let fileHandle = null;
+const canPick = () => typeof window.showSaveFilePicker === "function";
+/* Cancelling a picker throws AbortError; some builds report it as a plain
+   DOMException with an abort message instead. Either way: do nothing. */
+const wasCancelled = err =>
+  !!err && (err.name === "AbortError" ||
+            /abort|cancel|user activation/i.test(err.message || ""));
+const PICKER_TYPES = [{description:"Tally split", accept:{"application/json":[".json"]}}];
+
+function suggestedName(){
+  const who = state.people.slice(0,3).map(p => p.name.toLowerCase().replace(/[^a-z0-9]/g,"")).filter(Boolean);
+  const stem = who.length ? who.join("-") : "tally";
+  return stem.slice(0,40) + "-split.json";
+}
+
+function downloadFallback(json){
+  const blob = new Blob([json], {type:"application/json"});
+  const a = el("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = suggestedName();
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast("Download started. Check your browser's downloads.");
+}
+
+async function saveFile({reuse = false} = {}){
+  if (!state.people.length && !state.expenses.length){
+    toast("Nothing to save yet. Add someone first.");
+    return;
+  }
+  const json = JSON.stringify(state, null, 2);
+  if (!canPick()) return downloadFallback(json);
+  try {
+    if (!reuse || !fileHandle){
+      fileHandle = await window.showSaveFilePicker({
+        suggestedName: suggestedName(),
+        types: PICKER_TYPES
+      });
+    }
+    const w = await fileHandle.createWritable();
+    await w.write(json);
+    await w.close();
+    toast("Split saved to " + fileHandle.name);
+    $("#btn-resave").hidden = false;
+  } catch (err) {
+    if (wasCancelled(err)) return;                     /* nothing saved */
+    fileHandle = null;
+    downloadFallback(json);                            /* dialog blocked — fall back */
+  }
+}
+
+function applyLoaded(d, label){
+  if (!Array.isArray(d.people) || !Array.isArray(d.expenses)) throw new Error("shape");
+
+  /* Remap every person onto a fresh ID so a loaded file can never collide
+     with IDs minted later in this session. Expense references follow the map. */
+  seq = 1;
+  const map = new Map();
+  const people = d.people.map(p => {
+    const id = "k" + (seq++);
+    if (p.id !== undefined) map.set(String(p.id), id);
+    return {id, name: String(p.name || "?")};
+  });
+  const known = new Set(people.map(p => p.id));
+  const ref = old => map.get(String(old));
+
+  const expenses = d.expenses.map(x => {
+    const parts = (Array.isArray(x.parts) ? x.parts : [])
+      .map(ref).filter(id => known.has(id));
+    const vals = {};
+    Object.entries(x.vals || {}).forEach(([k, v]) => {
+      const id = ref(k);
+      if (known.has(id)) vals[id] = v;
+    });
+    const paidBy = ref(x.paidBy);
+    return {
+      id: "k" + (seq++),
+      desc: String(x.desc || ""),
+      amount: String(x.amount ?? ""),
+      paidBy: known.has(paidBy) ? paidBy : (people[0] ? people[0].id : undefined),
+      type: ["equal","exact","percent","shares"].includes(x.type) ? x.type : "equal",
+      parts: [...new Set(parts)],
+      vals,
+      included: x.included !== false,
+      open: false
+    };
+  });
+
+  state = {currency: SYM[d.currency] ? d.currency : "INR", people, expenses};
+  $("#currency").value = state.currency;
+  resetHistory();
+  renderAll();
+  toast("Opened your split from " + label);
+}
+
+async function openFile(){
+  if (typeof window.showOpenFilePicker !== "function") return $("#file-input").click();
+  try {
+    const [h] = await window.showOpenFilePicker({types:PICKER_TYPES, multiple:false});
+    const f = await h.getFile();
+    applyLoaded(JSON.parse(await f.text()), f.name);
+    fileHandle = h;
+    $("#btn-resave").hidden = false;
+  } catch (err) {
+    if (wasCancelled(err)) return;
+    if (err && err.name === "SecurityError") return $("#file-input").click();
+    toast("That doesn't look like a saved split. Pick a file you saved from here.");
+  }
+}
+
+$("#btn-save").onclick = () => saveFile();
+$("#btn-resave").onclick = () => saveFile({reuse:true});
+$("#btn-load").onclick = openFile;
+$("#file-input").onchange = e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try { applyLoaded(JSON.parse(r.result), f.name); }
+    catch { toast("That doesn't look like a saved split. Pick a file you saved from here."); }
+  };
+  r.readAsText(f);
+  e.target.value = "";
+};
+
+let clearArmed = false;
+const clearBtn = $("#btn-clear");
+
+function disarmClear(){
+  if (!clearArmed) return;
+  clearArmed = false;
+  clearBtn.textContent = "Start over";
+  clearBtn.classList.remove("armed");
+  clearTimeout(clearBtn._t);
+}
+
+clearBtn.onclick = () => {
+  if (!state.people.length && !state.expenses.length) return;
+  if (!clearArmed){
+    clearArmed = true;
+    clearBtn.textContent = "Erase everything?";
+    clearBtn.classList.add("armed");
+    clearBtn._t = setTimeout(disarmClear, 4000);
+    return;
+  }
+  disarmClear();
+  state = {currency: state.currency, people: [], expenses: []};
+  push();
+  fileHandle = null;
+  $("#btn-resave").hidden = true;
+  renderAll();
+  $("#new-person").focus();
+  toast("Cleared. Starting fresh.");
+};
+
+document.addEventListener("click", e => {
+  if (!e.target.closest("#btn-clear")) disarmClear();
+});
+
+/* ============================ xlsx writer ============================ */
+/* An .xlsx is a zip of XML parts. Built here with stored (uncompressed)
+   entries so no compression library is needed; Excel, LibreOffice and
+   Google Sheets all open it. */
+
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++){
+    let c = n;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+
+function crc32(bytes){
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+
+function zip(entries){
+  const enc = new TextEncoder();
+  const parts = [], central = [];
+  let offset = 0;
+  const d = new Date();
+  const dosTime = ((d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1)) & 0xFFFF;
+  const dosDate = (((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate()) & 0xFFFF;
+
+  entries.forEach(({name, text}) => {
+    const nameB = enc.encode(name);
+    const data = enc.encode(text);
+    const crc = crc32(data);
+
+    const local = new DataView(new ArrayBuffer(30));
+    local.setUint32(0, 0x04034B50, true);
+    local.setUint16(4, 20, true);       /* version needed */
+    local.setUint16(6, 0x0800, true);   /* UTF-8 names */
+    local.setUint16(8, 0, true);        /* stored */
+    local.setUint16(10, dosTime, true);
+    local.setUint16(12, dosDate, true);
+    local.setUint32(14, crc, true);
+    local.setUint32(18, data.length, true);
+    local.setUint32(22, data.length, true);
+    local.setUint16(26, nameB.length, true);
+    local.setUint16(28, 0, true);
+    parts.push(new Uint8Array(local.buffer), nameB, data);
+
+    const cd = new DataView(new ArrayBuffer(46));
+    cd.setUint32(0, 0x02014B50, true);
+    cd.setUint16(4, 20, true);
+    cd.setUint16(6, 20, true);
+    cd.setUint16(8, 0x0800, true);
+    cd.setUint16(10, 0, true);
+    cd.setUint16(12, dosTime, true);
+    cd.setUint16(14, dosDate, true);
+    cd.setUint32(16, crc, true);
+    cd.setUint32(20, data.length, true);
+    cd.setUint32(24, data.length, true);
+    cd.setUint16(28, nameB.length, true);
+    cd.setUint32(42, offset, true);
+    central.push(new Uint8Array(cd.buffer), nameB);
+
+    offset += 30 + nameB.length + data.length;
+  });
+
+  const centralSize = central.reduce((a, b) => a + b.length, 0);
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054B50, true);
+  end.setUint16(8, entries.length, true);
+  end.setUint16(10, entries.length, true);
+  end.setUint32(12, centralSize, true);
+  end.setUint32(16, offset, true);
+
+  return new Blob([...parts, ...central, new Uint8Array(end.buffer)],
+    {type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+}
+
+const xesc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+function colRef(i){
+  let s = "";
+  for (i++; i > 0; i = Math.floor((i - 1) / 26)) s = String.fromCharCode(65 + (i - 1) % 26) + s;
+  return s;
+}
+/* cell: {v, t:"s"|"n", b:bold, m:money} */
+const T = v => ({v, t:"s"});
+const B = v => ({v, t:"s", b:true});
+const M = c => ({v: c / 100, t:"n", m:true});
+const MB = c => ({v: c / 100, t:"n", m:true, b:true});
+
+/* cell extras: f = Excel formula (computed v still included so the file
+   opens correct even before recalculation) */
+function sheetXml(rows, widths, opts){
+  opts = opts || {};
+  const cols = widths
+    ? "<cols>" + widths.map((w,i) => `<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join("") + "</cols>"
+    : "";
+  const views = opts.freeze
+    ? `<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>`
+    : "";
+  const body = rows.map((cells, r) => {
+    const cs = cells.map((c, i) => {
+      if (c === null || c === undefined) return "";
+      const ref = colRef(i) + (r + 1);
+      const style = c.m ? (c.b ? 3 : 2) : (c.b ? 1 : 0);
+      const st = style ? ` s="${style}"` : "";
+      if (c.f) return `<c r="${ref}"${st}><f>${xesc(c.f)}</f><v>${c.v}</v></c>`;
+      return c.t === "n"
+        ? `<c r="${ref}"${st}><v>${c.v}</v></c>`
+        : `<c r="${ref}"${st} t="inlineStr"><is><t xml:space="preserve">${xesc(c.v)}</t></is></c>`;
+    }).join("");
+    return `<row r="${r+1}">${cs}</row>`;
+  }).join("");
+  const filter = opts.filter ? `<autoFilter ref="${opts.filter}"/>` : "";
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${views}${cols}<sheetData>${body}</sheetData>${filter}</worksheet>`;
+}
+/* Formula cell producing money: {v, f, m:true} */
+const MF = (c, f) => ({v: c / 100, t:"n", m:true, f});
+const MFB = (c, f) => ({v: c / 100, t:"n", m:true, b:true, f});
+
+function stylesXml(){
+  const fmt = `&quot;${SYM[state.currency]}&quot;#,##0.00;[Red]\\-&quot;${SYM[state.currency]}&quot;#,##0.00`;
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<numFmts count="1"><numFmt numFmtId="164" formatCode="${fmt}"/></numFmts>
+<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>
+<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>
+<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="4">
+<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>
+<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+<xf numFmtId="164" fontId="1" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/>
+</cellXfs>
+<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+}
+
+const SPLIT_LABEL = {equal:"Equally", exact:"Exact amount", percent:"Percentage", shares:"Shares"};
+
+function workbookBlob(){
+  const L = ledger();
+  const np = state.people.length;
+
+  /* ---- Overview: metadata + the headline numbers ---- */
+  const today = new Date();
+  const kv = (k, v, money) => [B(k), money ? M(v) : T(String(v))];
+  const included = state.expenses.filter(e => e.included !== false);
+  const s0 = [
+    [B("Tally expense split")],
+    [],
+    kv("Exported", today.toLocaleDateString(undefined, {year:"numeric", month:"long", day:"numeric"})),
+    kv("Currency", state.currency + " (" + SYM[state.currency] + ")"),
+    kv("Participants", np),
+    kv("Expenses in the split", included.length + (included.length === state.expenses.length ? "" : " of " + state.expenses.length)),
+    kv("Settlement method", settleMode === "min" ? "Fewest payments" : "Pay who you owe"),
+    [],
+    kv("Total spent", L.total, true),
+    [],
+    [T("Sheets: Balances (per person), Expenses (one row each), Shares (who owes what per expense), Settle up (who pays whom).")],
+    [T("Net on the Balances sheet is a live formula: paid minus share. Every amount column can be summed safely.")]
+  ];
+
+  /* ---- Balances: Net as a formula, totals as SUM ---- */
+  const s1 = [[B("Participant"), B("Paid"), B("Share"), B("Net"), B("Status")]];
+  state.people.forEach((p, i) => {
+    const r = i + 2;
+    const n = L.net[p.id];
+    s1.push([T(p.name), M(L.paid[p.id]), M(L.owed[p.id]),
+      MF(n, "B" + r + "-C" + r),
+      T(n === 0 ? "Settled" : n > 0 ? "Is owed" : "Owes")]);
+  });
+  const tr = np + 2;
+  s1.push([B("Total"),
+    MFB(L.total, "SUM(B2:B" + (tr - 1) + ")"),
+    MFB(L.total, "SUM(C2:C" + (tr - 1) + ")"),
+    MFB(0, "SUM(D2:D" + (tr - 1) + ")"),
+    null]);
+
+  /* ---- Expenses: exactly one row per expense ---- */
+  const s2 = [[B("Description"), B("Amount"), B("Paid by"), B("Split type"), B("Split between"), B("In the split")]];
+  state.expenses.forEach(e => {
+    const sp = splitOf(e);
+    const payer = personById(e.paidBy);
+    const names = e.parts.filter(id => personById(id)).map(id => personById(id).name).join(", ");
+    s2.push([T(e.desc || "Untitled"), M(cents(e.amount)), T(payer ? payer.name : "—"),
+      T(SPLIT_LABEL[e.type]), T(names || "— nobody selected —"),
+      T(e.included === false ? "No, left out" : sp.ok ? "Yes" : "No, incomplete")]);
+  });
+
+  /* ---- Shares: long format, amounts appear once, so SUM(Share) = total ---- */
+  const s3 = [[B("Expense"), B("Person"), B("Share"), B("Role")]];
+  state.expenses.forEach(e => {
+    if (e.included === false) return;
+    const sp = splitOf(e);
+    if (!sp.ok) return;
+    e.parts.filter(id => personById(id)).forEach(id => {
+      s3.push([T(e.desc || "Untitled"), T(personById(id).name), M(sp.shares[id] || 0),
+        T(id === e.paidBy ? "Paid this expense" : "")]);
+    });
+  });
+  const s3n = s3.length;
+  s3.push([B("Total"), null, MFB(L.total, "SUM(C2:C" + s3n + ")"), null]);
+
+  /* ---- Settle up: payment and detail amounts in separate columns ---- */
+  const moves = currentSettlements(L.net);
+  const s4 = [[B("From"), B("To"), B("Payment"), B("Detail"), B("Detail amount")]];
+  if (!moves.length) s4.push([T("Nothing to settle"), null, null, null, null]);
+  moves.forEach(m => {
+    s4.push([T(personById(m.from).name), T(personById(m.to).name), M(m.amt), null, null]);
+    (m.lines || []).forEach(l =>
+      s4.push([null, null, null, T((l.sign < 0 ? "less " : "") + l.desc), M(l.sign * l.amt)]));
+    if (m.meta){
+      s4.push([null, null, null, T(personById(m.from).name + " owes the group"), M(m.meta.fromOwes)]);
+      s4.push([null, null, null, T(personById(m.to).name + " is owed by the group"), M(m.meta.toDue)]);
+    }
+  });
+  if (moves.length){
+    const rows = s4.length;
+    s4.push([B("Total moving"), null, MFB(moves.reduce((a, m) => a + m.amt, 0), "SUM(C2:C" + rows + ")"), null, null]);
+  }
+
+  const sheets = [
+    {name:"Overview",  xml: sheetXml(s0, [26, 44])},
+    {name:"Balances",  xml: sheetXml(s1, [18, 14, 14, 14, 12], {freeze:true})},
+    {name:"Expenses",  xml: sheetXml(s2, [26, 14, 14, 16, 34, 18], {freeze:true, filter:"A1:F" + s2.length})},
+    {name:"Shares",    xml: sheetXml(s3, [26, 16, 14, 20], {freeze:true, filter:"A1:D" + s3n})},
+    {name:"Settle up", xml: sheetXml(s4, [18, 18, 14, 30, 14], {freeze:true})}
+  ];
+
+  const ct = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+${sheets.map((s,i) => `<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("")}
+<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+</Types>`;
+
+  const rootRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`;
+
+  const wb = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<sheets>${sheets.map((s,i) => `<sheet name="${xesc(s.name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join("")}</sheets>
+</workbook>`;
+
+  const wbRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+${sheets.map((s,i) => `<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join("")}
+<Relationship Id="rId${sheets.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+
+  return zip([
+    {name:"[Content_Types].xml", text: ct},
+    {name:"_rels/.rels", text: rootRels},
+    {name:"xl/workbook.xml", text: wb},
+    {name:"xl/_rels/workbook.xml.rels", text: wbRels},
+    {name:"xl/styles.xml", text: stylesXml()},
+    ...sheets.map((s,i) => ({name:`xl/worksheets/sheet${i+1}.xml`, text: s.xml}))
+  ]);
+}
+
+async function exportExcel(){
+  if (!state.people.length && !state.expenses.length){
+    toast("Nothing to export yet. Add someone first.");
+    return;
+  }
+  const blob = workbookBlob();
+  const name = suggestedName().replace(/\.json$/, ".xlsx");
+  const types = [{description:"Excel workbook", accept:{"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":[".xlsx"]}}];
+
+  if (canPick()){
+    try {
+      const h = await window.showSaveFilePicker({suggestedName:name, types});
+      const w = await h.createWritable();
+      await w.write(blob);
+      await w.close();
+      toast("Summary exported to " + h.name);
+      return;
+    } catch (err) {
+      if (wasCancelled(err)) return;
+      /* dialog blocked — fall through to download */
+    }
+  }
+  const a = el("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast("Download started. Check your browser's downloads.");
+}
+
+$("#btn-excel").onclick = exportExcel;
+
+$("#currency").onchange = e => { state.currency = e.target.value; push(); renderAll(); };
+$("#btn-add-person").onclick = addPerson;
+$("#new-person").onkeydown = e => { if (e.key === "Enter") addPerson(); };
+$("#btn-add-exp").onclick = addExpense;
+
+resetHistory();
+renderAll();
+$("#new-person").focus();
+</script>
+</body>
+</html>
